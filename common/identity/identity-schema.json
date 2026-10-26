@@ -7,7 +7,7 @@
   "properties": {
     "root_id": {
       "type": "string",
-      "description": "外部生态统一 Agent 身份 ID，跨设备共享。格式: watch-{uuid hex 12}"
+      "description": "外部生态统一 Agent 身份 ID。格式: watch-{uuid hex 12}"
     },
     "created_at": {
       "type": "string",

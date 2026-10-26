@@ -61,7 +61,7 @@ common/ 只放契约不放可执行代码，blueos/ 是唯一实现。详见 `AR
 
 ### 统一身份
 
-所有设备共享同一 root_id 机制，手表 Agent 的身份模型与 aos-agent（车机）、AgentOpenConnect（服务器）兼容。
+手表 Agent 的身份模型基于 root_id 机制，供外部系统接入时复用。
 
 ### 事件唤醒形态
 
