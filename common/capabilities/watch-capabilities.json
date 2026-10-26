@@ -1,0 +1,215 @@
+{
+  "description": "手表 Agent 对外声明的能力清单，供外部生态发现与接入",
+  "version": "0.3.0",
+  "platform": "blueos",
+  "form": "passive",
+  "runtime_model": "resident-heartbeat",
+  "notes": [
+    "手表是被动形态：不提供交互输入界面。Agent 由传感器事件（经闸门）、外部调用和定时任务唤醒，不由用户在腕上敲字驱动。",
+    "runtime_model = resident-heartbeat：蓝河没有常驻进程，常驻由平台定时任务（真实时间流逝、休眠也计时、后台拉起 app.ux 上的心跳方法）实现；任务进度落盘，一个后台窗口跑不完就留给下一次唤醒。",
+    "status = implemented 表示当前代码已实现；planned 表示已声明但尚未实现，接入方不应依赖。",
+    "传感器原始数据上行（heart-rate / activity 上报接口）不在本期范围，当前只产出本地闸门事件。"
+  ],
+  "capabilities": [
+    {
+      "id": "agent_task_execution",
+      "name": "Passive Task Execution",
+      "description": "被动接受外部任务并执行：调用方下发 instruction，手表 Agent 经 LLM 与本地工具完成，回传 {task_id, status, result}",
+      "tags": [
+        "agent",
+        "task",
+        "passive"
+      ],
+      "input_modes": [],
+      "output_modes": [
+        "text",
+        "display",
+        "haptic"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "scheduled_job",
+      "name": "Scheduled Jobs",
+      "description": "手表侧定时任务表：外部或本地登记 {name, instruction, intervalMs}，到期自动作为任务进入 Agent 队列；错过的轮次不补跑",
+      "tags": [
+        "agent",
+        "schedule",
+        "resident"
+      ],
+      "input_modes": [
+        "task"
+      ],
+      "output_modes": [
+        "text",
+        "haptic"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "ble_gatt_service",
+      "name": "BLE GATT Inbound Service",
+      "description": "腕上入站服务面：蓝河无端口监听 API，故以 BLE 外围设备（GATT Server）形态对外提供服务——对端写 cmd 特征下发指令，手表经 Agent 执行后从 resp 特征 read/notify 回结果。默认关闭，需 ble_config.enabled 打开",
+      "tags": [
+        "connectivity",
+        "inbound",
+        "ble"
+      ],
+      "input_modes": [
+        "task"
+      ],
+      "output_modes": [
+        "data"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "mcp_tools",
+      "name": "MCP Tool Bridge",
+      "description": "接入 MCP server 的工具并注册进 Agent 工具清单。受运行时限制仅支持 HTTP 传输（无子进程，stdio 不可用）；工具名加 <server>__ 前缀",
+      "tags": [
+        "tools",
+        "mcp",
+        "extension"
+      ],
+      "input_modes": [
+        "tool"
+      ],
+      "output_modes": [
+        "data"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "health_heart_rate",
+      "name": "Heart Rate Monitoring",
+      "description": "本地心率感知与闸门事件检测（持续偏高 / 异常偏低）；原始数据上行不在本期",
+      "tags": [
+        "health",
+        "sensor",
+        "heart"
+      ],
+      "input_modes": [],
+      "output_modes": [
+        "event"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "notification_display",
+      "name": "Notification Display",
+      "description": "接收并展示通知消息（闸门事件的默认输出通道之一）",
+      "tags": [
+        "notification",
+        "display"
+      ],
+      "input_modes": [],
+      "output_modes": [
+        "haptic",
+        "display"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "haptic_feedback",
+      "name": "Haptic Feedback",
+      "description": "震动反馈，用于提醒与通知；腕上振动是抵达率最高的输出通道",
+      "tags": [
+        "haptic",
+        "feedback"
+      ],
+      "input_modes": [],
+      "output_modes": [
+        "haptic"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "health_blood_oxygen",
+      "name": "Blood Oxygen Monitoring",
+      "description": "血氧饱和度(SpO2)感知与上报",
+      "tags": [
+        "health",
+        "sensor",
+        "spo2"
+      ],
+      "input_modes": [],
+      "output_modes": [
+        "event"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "health_activity",
+      "name": "Activity Recognition",
+      "description": "运动状态识别与上报（走/跑/骑/游/睡）",
+      "tags": [
+        "health",
+        "sensor",
+        "activity"
+      ],
+      "input_modes": [],
+      "output_modes": [
+        "event"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "health_sleep",
+      "name": "Sleep Tracking",
+      "description": "睡眠监测与阶段分析",
+      "tags": [
+        "health",
+        "sleep"
+      ],
+      "input_modes": [],
+      "output_modes": [
+        "event"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "projection_display",
+      "name": "Universal Projection Display",
+      "description": "接收外部设备或外部生态 Agent 投射的自描述数据卡片并交给 BlueOS 系统级输出适配（文本/图片/进度/同步文本等原语组合），不提供手表自研 UI", 
+      "tags": [
+        "display",
+        "projection",
+        "universal"
+      ],
+      "input_modes": [],
+      "output_modes": [
+        "display"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "bluetooth_connectivity",
+      "name": "Bluetooth Connectivity",
+      "description": "蓝牙连接管理，用于与手机配对和数据同步",
+      "tags": [
+        "connectivity",
+        "bluetooth"
+      ],
+      "input_modes": [],
+      "output_modes": [
+        "data"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "offline_cache",
+      "name": "Offline Data Cache",
+      "description": "离线数据缓存，网络恢复后同步",
+      "tags": [
+        "storage",
+        "offline"
+      ],
+      "input_modes": [],
+      "output_modes": [
+        "data"
+      ],
+      "status": "planned"
+    }
+  ]
+}

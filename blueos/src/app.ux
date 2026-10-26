@@ -1,0 +1,52 @@
+<script>
+import { AgentRuntime } from './agent-core/runtime'
+
+/**
+ * 后台拉起时 app 可能还没装配好，这里补齐「未就绪就启动一次」，
+ * 并防止多次 tick 并发触发重复 start。
+ */
+async function ensureStarted() {
+  const runtime = AgentRuntime.getInstance()
+  if (!runtime.ready && !runtime._starting) {
+    runtime._starting = true
+    try {
+      await runtime.start()
+    } catch (err) {
+      console.error('[Pulse Agent] background start failed: ' + (err && err.message ? err.message : String(err)))
+    } finally {
+      runtime._starting = false
+    }
+  }
+  return runtime
+}
+
+export default {
+  onCreate() {
+    console.log('[Pulse Agent] app onCreate')
+    this.runtime = new AgentRuntime()
+    this.runtime.start().catch(err => {
+      console.error('[Pulse Agent] runtime start failed: ' + (err && err.message ? err.message : JSON.stringify(err)))
+    })
+  },
+
+  /**
+   * 心跳入口。名字必须与 platform/schedule.js 注册的 triggerMethod 一致——
+   * 手表上没有常驻进程，系统按周期后台拉起这个方法就是唯一的常驻落点。
+   */
+  async agentTick(params) {
+    const runtime = await ensureStarted()
+    if (!runtime.ready) {
+      console.warn('[Pulse Agent] agentTick skipped: runtime 未就绪, failedStep=' + runtime.failedStep)
+      return { skipped: true, failedStep: runtime.failedStep }
+    }
+    return runtime.tick(params)
+  },
+
+  onDestroy() {
+    console.log('[Pulse Agent] app onDestroy')
+    if (this.runtime) {
+      this.runtime.stop()
+    }
+  }
+}
+</script>

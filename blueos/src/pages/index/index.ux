@@ -1,0 +1,122 @@
+<template>
+  <div class="page">
+    <text class="title">Pulse Agent</text>
+    <text class="subtitle">{{ statusText }}</text>
+    <qrcode class="qr" eclevel="1" value="{{ qrValue }}" if="{{ showQr }}"></qrcode>
+    <text class="code" if="{{ showCode }}">设备码 {{ code }}</text>
+    <text class="detail">{{ statusDetail }}</text>
+  </div>
+</template>
+
+<script>
+import { AgentRuntime } from '../../agent-core/runtime'
+
+const REFRESH_MS = 1000
+
+const PHASE_TEXT = {
+  idle: ['启动中', '正在装配执行层…'],
+  requesting: ['正在申请设备码', '请稍候'],
+  waiting: ['请用手机浏览器扫码', '扫不开就打开下面地址并输入设备码'],
+  applying: ['正在写入配置', '马上好'],
+  done: ['LLM 已配置', '配置已热加载，可以开始干活'],
+  configured: ['LLM 已配置', '执行层运行中'],
+  'no-url': ['缺少引导地址', '在电脑上执行：node scripts/llm-config.js sync-simulator'],
+  failed: ['引导失败', '']
+}
+
+export default {
+  data: {
+    statusText: '启动中',
+    statusDetail: '',
+    qrValue: '',
+    code: '',
+    showQr: false,
+    showCode: false
+  },
+
+  onInit() {
+    this._timer = setInterval(() => this.refresh(), REFRESH_MS)
+    this.refresh()
+  },
+
+  onHide() {
+    this._stopTimer()
+  },
+
+  onDestroy() {
+    this._stopTimer()
+  },
+
+  _stopTimer() {
+    if (this._timer) {
+      clearInterval(this._timer)
+      this._timer = null
+    }
+  },
+
+  refresh() {
+    let state = {}
+    try {
+      const runtime = AgentRuntime.getInstance()
+      state = runtime.getState ? runtime.getState() : {}
+    } catch (e) {
+      this.statusText = '运行时读取失败'
+      this.statusDetail = String(e && e.message ? e.message : e)
+      this.showQr = false
+      this.showCode = false
+      return
+    }
+
+    const ob = state.onboarding || {}
+    const phase = ob.phase || (state.llm && state.llm.configured ? 'configured' : 'idle')
+    const mapped = PHASE_TEXT[phase] || PHASE_TEXT.idle
+    this.statusText = mapped[0]
+    this.statusDetail = phase === 'failed'
+      ? (ob.error || '未知错误')
+      : (state.ready ? mapped[1] : '执行层启动中…')
+    this.code = ob.code || ''
+    this.qrValue = ob.qrValue || ''
+    this.showQr = phase === 'waiting' && !!this.qrValue
+    this.showCode = this.showQr
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #111111;
+}
+.title {
+  font-size: 32px;
+  color: #ffffff;
+}
+.subtitle {
+  font-size: 24px;
+  color: #dddddd;
+  margin-top: 8px;
+}
+.qr {
+  width: 200px;
+  height: 200px;
+  margin-top: 10px;
+  background-color: #ffffff;
+}
+.code {
+  font-size: 30px;
+  color: #ffd84d;
+  margin-top: 8px;
+  letter-spacing: 4px;
+}
+.detail {
+  font-size: 20px;
+  color: #999999;
+  margin-top: 8px;
+  text-align: center;
+  width: 86%;
+}
+</style>

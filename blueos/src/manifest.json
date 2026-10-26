@@ -1,0 +1,76 @@
+{
+  "package": "com.pulse.agent",
+  "name": "Pulse Agent",
+  "versionName": "0.1.0",
+  "versionCode": 1,
+  "minPlatformVersion": 1,
+  "deviceTypeList": [
+    "watch",
+    "watch-square"
+  ],
+  "features": [
+    {
+      "name": "blueos.network.fetch"
+    },
+    {
+      "name": "blueos.network.webSocket"
+    },
+    {
+      "name": "blueos.storage.storage"
+    },
+    {
+      "name": "blueos.storage.file"
+    },
+    {
+      "name": "blueos.hardware.sensor.sensor"
+    },
+    {
+      "name": "blueos.health.health"
+    },
+    {
+      "name": "blueos.app.notification.notificationManager"
+    },
+    {
+      "name": "blueos.hardware.vibrator.vibrator"
+    },
+    {
+      "name": "blueos.network.networkManager"
+    },
+    {
+      "name": "blueos.app.appmanager.schedule"
+    }
+  ],
+  "permissions": [
+    {
+      "name": "watch.permission.READ_HEALTH_DATA"
+    },
+    {
+      "name": "watch.permission.STEP_COUNTER"
+    }
+  ],
+  "config": {
+    "logLevel": "trace",
+    "designWidth": 466,
+    "background": {
+      "features": [
+        "blueos.network.fetch",
+        "blueos.hardware.sensor.sensor",
+        "blueos.health.health",
+        "blueos.app.notification.notificationManager",
+        "blueos.hardware.vibrator.vibrator",
+        "blueos.app.appmanager.schedule"
+      ]
+    }
+  },
+  "router": {
+    "entry": "pages/index",
+    "pages": {
+      "pages/index": {
+        "component": "index"
+      }
+    }
+  },
+  "display": {
+    "backgroundColor": "#111111"
+  }
+}

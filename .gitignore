@@ -1,0 +1,22 @@
+node_modules/
+build/
+dist/
+*.rpk
+*.log
+.DS_Store
+
+# Agent 工作区数据（本地记忆/缓存），不纳入版本管理
+.workbuddy-ai/
+
+# local-test 的镜像产物
+scripts/local-test/.build/
+
+# BlueOS Studio 预览/模拟器产生的本地状态
+.preview.json
+
+# CLI/Web 本地模型配置（包含 API Key）
+config/*
+!config/.gitkeep
+
+# 签名证书私钥，禁止入库
+blueos/sign/

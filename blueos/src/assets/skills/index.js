@@ -1,0 +1,68 @@
+/**
+ * 本文件由 scripts/sync-skills.js 从同目录下的 SKILL.md 生成，请勿手工修改。
+ * 重新生成：node scripts/sync-skills.js
+ *
+ * 为什么内嵌而不是运行时读文件：BlueOS 运行时无法直接读取打包进 assets 的文本文件。
+ * SKILL.md 原文保留在磁盘上，供人阅读、供生态复制，也供 internal://files 覆盖时作模板。
+ */
+
+export const SKILLS = [
+  {
+    path: "health-alert-handling/SKILL.md",
+    content: `---
+name: health-alert-handling
+description: 处理健康类闸门事件（心率、血氧异常）时的处置步骤，只给描述性提示，绝不给医疗建议
+triggers:
+  - sustained_high_heart_rate
+  - low_heart_rate
+  - low_blood_oxygen
+tools_allowed:
+  - get_heart_rate
+  - get_step_count
+  - get_sensor_data
+  - notification_send
+  - vibrate
+---
+
+# 健康异常事件处置
+
+## 何时适用
+
+闸门放行了 \`sustained_high_heart_rate\`、\`low_heart_rate\`、\`low_blood_oxygen\` 之一时。
+
+## 步骤
+
+1. **先补上下文，再下判断。** 事件载荷只给了触发值和条件说明。判断前用工具补齐当前状态：
+   - \`get_sensor_data()\` 看是否佩戴、抬腕与计步状态；
+   - \`get_step_count()\` 看今日活动量；
+   - \`get_heart_rate()\` 只在载荷缺失或数值明显可疑时调用，避免重复查询。
+
+2. **区分异常与正常波动。** 以下情况倾向不提醒：正在运动或刚结束运动（步数在增长）、
+   抬腕或手腕动作引起的瞬时跳变、刚从坐姿起身。
+
+3. **需要提醒时，\`notify\` 只写一句话**，面向用户、口语化、不含专业术语。
+
+4. **绝不给医疗建议。** 不说疾病名称，不做诊断性结论，不推断病因。
+
+5. **不制造提醒。** 依据不足时输出不打扰的结论，不要凭猜测打扰用户。
+
+## 输出
+
+严格按事件路径约定输出一个 JSON 对象：
+
+- 需要提醒：\`{"notify": "<一句话提醒>", "vibrate": true}\`
+- 不打扰：\`{"notify": "", "vibrate": false}\`
+
+## 反例与正例
+
+- 反例（含疾病判断，越界）：「你的心率 128，可能是心律不齐，建议尽快就医」
+- 反例（无信息量，用户不知道要做什么）：「检测到异常，请查看」
+- 正例：「心率偏高已经持续 10 分钟了，先停下来歇一会儿」
+
+## 边界
+
+这条 skill 的存在理由就是第 4 步。手表的健康解读只出**描述性提示**：可以说
+「持续 20 分钟心率偏高且无活动」，不可以说「你可能有心律不齐」——后者是医疗建议。
+`
+  }
+]

@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Gate Conditions Schema",
+  "description": "闸门条件契约。闸门是感知与 LLM 之间的廉价前置过滤器：只有跨过条件的传感器事件才值得交给 LLM 判断。条件必须是声明式数据，不能是命令式代码——这样生态里其他设备能读懂手表在什么情况下会上报，用户能改配置而不用重新打包，将来也能翻译成平台原生的低功耗阈值检测。",
+  "type": "object",
+  "required": ["version", "conditions"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "契约版本"
+    },
+    "conditions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/GateCondition" }
+    }
+  },
+  "definitions": {
+    "GateCondition": {
+      "type": "object",
+      "required": ["id", "description", "dataType", "operator", "threshold", "cooldownSeconds"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "条件标识，全局唯一"
+        },
+        "description": {
+          "type": "string",
+          "description": "人类可读说明，也用于向 LLM 描述这个事件为什么被触发"
+        },
+        "dataType": {
+          "type": "string",
+          "description": "监测的数据类型",
+          "enum": [
+            "heart_rate",
+            "blood_oxygen",
+            "step_count",
+            "on_body",
+            "wrist_lift",
+            "battery_level"
+          ]
+        },
+        "operator": {
+          "type": "string",
+          "description": "比较符",
+          "enum": ["gt", "gte", "lt", "lte", "eq"]
+        },
+        "threshold": {
+          "type": "number",
+          "description": "阈值。布尔类型的 dataType（on_body / wrist_lift）用 0 表示 false、1 表示 true"
+        },
+        "sustainedSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "条件需连续满足多久才算跨过闸门。0 表示单次采样即触发。用于滤掉瞬时抖动"
+        },
+        "cooldownSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "触发后的静默期，期间同一条件不再触发。必填——缺了它一个持续偏高的心率会在每个采样点都触发一次，把 LLM 调用打爆"
+        }
+      }
+    }
+  }
+}

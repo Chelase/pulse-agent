@@ -1,0 +1,16 @@
+{
+  "name": "pulse-agent",
+  "version": "0.1.0",
+  "description": "Pulse Agent - BlueOS platform implementation",
+  "scripts": {
+    "lint": "eslint --ext .ux,.js src/"
+  },
+  "devDependencies": {
+    "eslint": "^7.32.0"
+  },
+  "keywords": [
+    "Pulse Agent",
+    "Watch Agent",
+    "BlueOS"
+  ]
+}

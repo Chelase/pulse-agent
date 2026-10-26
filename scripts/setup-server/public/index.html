@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Pulse Agent 配置</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; padding: 24px 16px 48px; max-width: 420px; margin-inline: auto; }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; }
+    p.lead { color: #666; margin: 0 0 20px; font-size: 0.95rem; }
+    label { display: block; font-size: 0.85rem; margin: 12px 0 6px; }
+    input, select, button { width: 100%; box-sizing: border-box; font-size: 1rem; padding: 12px; border-radius: 10px; border: 1px solid #ccc; }
+    button { background: #1a73e8; color: #fff; border: none; margin-top: 16px; font-weight: 600; }
+    button.secondary { background: transparent; color: inherit; border: 1px solid #ccc; }
+    button:disabled { opacity: 0.5; }
+    .bound { padding: 10px 12px; border-radius: 8px; background: #e6f4ea; color: #137333; font-size: 0.9rem; margin-bottom: 8px; }
+    .bound.none { background: #fce8e6; color: #c5221f; }
+    .msg { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 0.9rem; white-space: pre-wrap; }
+    .msg.ok { background: #e6f4ea; color: #137333; }
+    .msg.err { background: #fce8e6; color: #c5221f; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border: 2px solid #c8c8c8; border-top-color: #555; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  </style>
+</head>
+<body>
+  <h1>配置手表 AI</h1>
+  <p class="lead">选择供应商并粘贴 API Key，提交后手表自己取走。无需安装 App。</p>
+  <div class="bound none" id="bound">未绑定手表</div>
+  <div id="watchList"></div>
+  <label for="apiMode">API 模式</label>
+  <select id="apiMode"></select>
+  <p class="lead" id="modeHint"></p>
+  <label for="preset">供应商</label>
+  <select id="preset"></select>
+  <label for="apiKey">API Key</label>
+  <input id="apiKey" type="password" autocomplete="off" placeholder="粘贴密钥" />
+  <label for="endpoint">Endpoint</label>
+  <input id="endpoint" autocomplete="off" />
+  <label for="model">Model</label>
+  <input id="model" autocomplete="off" />
+  <button type="button" class="secondary" id="testBtn">测试连接</button>
+  <button type="button" id="saveBtn" disabled>保存到手表</button>
+  <div id="msg" class="msg" hidden></div>
+  <script>
+    const $ = (id) => document.getElementById(id)
+    let presets = []
+    let modes = []
+    let testedOk = false
+    // 设备码由 setup 服务签发、随二维码带进来；人不需要看到它，更不需要抄它
+    let boundCode = (new URLSearchParams(location.search).get('code') || '').toUpperCase()
+
+    function show(text, ok) {
+      const el = $('msg'); el.hidden = false
+      el.className = 'msg ' + (ok ? 'ok' : 'err'); el.textContent = text
+    }
+    function currentMode() {
+      return modes.find(m => m.id === $('apiMode').value) || modes[0]
+    }
+    function invalidate() { testedOk = false; refreshSaveBtn() }
+    function refreshSaveBtn() { $('saveBtn').disabled = !(testedOk && /^[A-Z0-9]{6}$/.test(boundCode)) }
+    function renderBound() {
+      const el = $('bound')
+      const ok = /^[A-Z0-9]{6}$/.test(boundCode)
+      el.className = 'bound' + (ok ? '' : ' none')
+      el.textContent = ok ? '已绑定手表：' + boundCode : '未绑定手表：请扫手表屏幕上的二维码打开本页'
+    }
+    function renderModeHint() {
+      const m = currentMode()
+      $('modeHint').textContent = 'Endpoint 需以 ' + m.endpointSuffix + ' 结尾，只填基址会自动补全'
+    }
+    function applyPreset(p) {
+      $('endpoint').value = p.endpoint; $('model').value = p.model
+      if (p.apiMode && modes.some(m => m.id === p.apiMode)) $('apiMode').value = p.apiMode
+      renderModeHint(); invalidate()
+    }
+    function payload() {
+      return {
+        endpoint: $('endpoint').value.trim(),
+        apiKey: $('apiKey').value.trim(), model: $('model').value.trim(),
+        apiMode: $('apiMode').value
+      }
+    }
+    async function loadPresets() {
+      const res = await fetch('/api/setup/presets'); const data = await res.json()
+      presets = data.presets || []; modes = data.modes || []
+      const modeSel = $('apiMode'); modeSel.innerHTML = ''
+      modes.forEach(m => {
+        const opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.label
+        modeSel.appendChild(opt)
+      })
+      modeSel.value = data.defaultMode || (modes[0] && modes[0].id)
+      modeSel.onchange = () => { renderModeHint(); invalidate() }
+      const sel = $('preset'); sel.innerHTML = ''
+      presets.forEach((p, i) => {
+        const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.label
+        sel.appendChild(opt); if (i === 0) applyPreset(p)
+      })
+      sel.onchange = () => { const p = presets.find(x => x.id === sel.value); if (p) applyPreset(p) }
+    }
+    $('apiKey').addEventListener('input', invalidate)
+    $('endpoint').addEventListener('input', invalidate)
+    $('model').addEventListener('input', invalidate)
+    $('testBtn').onclick = async () => {
+      const btn = $('testBtn'); const label = btn.textContent
+      // 探测最长 30 秒，期间按钮转 loading，避免看起来像点了没反应
+      btn.disabled = true; btn.innerHTML = '<span class="spin"></span>测试中…'
+      try {
+        const res = await fetch('/api/setup/test-connection', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload()) })
+        const data = await res.json()
+        if (!res.ok || !data.ok) throw new Error(data.error || '测试失败')
+        testedOk = true; refreshSaveBtn(); show('连接成功，可以保存到手表。', true)
+      } catch (e) { testedOk = false; refreshSaveBtn(); show(String(e.message || e), false) }
+      finally { btn.textContent = label; btn.disabled = false }
+    }
+    $('saveBtn').onclick = async () => {
+      if (!/^[A-Z0-9]{6}$/.test(boundCode)) return show('没绑定手表：请扫手表屏幕上的二维码打开本页', false)
+      if (!testedOk) return show('请先测试连接', false)
+      $('saveBtn').disabled = true
+      try {
+        const res = await fetch('/api/setup/session/' + boundCode + '/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload()) })
+        const data = await res.json()
+        if (!res.ok) {
+          // 服务端不认这个码了（服务重启/过期/已领取）：解绑旧码，等 3 秒轮询自动绑上表的新码
+          if (res.status === 404 || res.status === 410) setBound('')
+          throw new Error(data.error || '保存失败')
+        }
+        show('已提交。请看手表：配置会自动写入并生效。', true)
+      } catch (e) { show(String(e.message || e), false); refreshSaveBtn() }
+    }
+
+    async function loadWaiting() {
+      let list = []
+      try {
+        const res = await fetch('/api/setup/sessions')
+        list = (await res.json()).waiting || []
+      } catch (e) {
+        show('读不到等待列表：' + (e.message || e), false)
+        return
+      }
+      const box = $('watchList')
+      box.innerHTML = ''
+      // 绑的码从列表消失分两种：被新码顶替（表端重申，列表非空）→ 解绑跟上去；
+      // 配置被表领走（列表清空）→ 成功收场，保持绑定，别刚提交完就翻红「未绑定」
+      if (/^[A-Z0-9]{6}$/.test(boundCode) && !list.some(w => w.code === boundCode) && list.length > 0) setBound('')
+      // 只有一只在等且本页没带码时，直接绑上，省掉一次点击
+      if (!/^[A-Z0-9]{6}$/.test(boundCode) && list.length === 1) setBound(list[0].code)
+      list.forEach(w => {
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'secondary'
+        btn.textContent = (w.code === boundCode ? '✓ ' : '') + '绑定这只表 · ' + w.device_id
+        btn.onclick = () => { setBound(w.code); invalidate() }
+        box.appendChild(btn)
+      })
+    }
+    function setBound(code) {
+      boundCode = String(code || '').toUpperCase()
+      // 地址栏跟上码，刷新/转发这个链接都还认得是哪只表；解绑时把旧码从地址里拿掉
+      if (/^[A-Z0-9]{6}$/.test(boundCode)) {
+        history.replaceState(null, '', location.pathname + '?code=' + boundCode)
+      } else {
+        history.replaceState(null, '', location.pathname)
+      }
+      renderBound(); refreshSaveBtn()
+    }
+
+    renderBound(); refreshSaveBtn()
+    loadWaiting()
+    setInterval(loadWaiting, 3000)
+    loadPresets().catch(e => show(String(e), false))
+  </script>
+</body>
+</html>

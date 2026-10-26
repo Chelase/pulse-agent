@@ -1,0 +1,32 @@
+{
+  "description": "LLM 请求协议模式清单：仓库控制面（CLI / 设备码 H5）与表上适配器共用同一组 id",
+  "version": "0.1.0",
+  "default": "openai-chat",
+  "modes": [
+    {
+      "id": "openai-chat",
+      "label": "OpenAI Chat Completions",
+      "endpointSuffix": "/chat/completions",
+      "auth": "bearer"
+    },
+    {
+      "id": "anthropic-messages",
+      "label": "Anthropic Messages",
+      "endpointSuffix": "/messages",
+      "auth": "x-api-key"
+    },
+    {
+      "id": "openai-responses",
+      "label": "OpenAI Responses",
+      "endpointSuffix": "/responses",
+      "auth": "bearer"
+    }
+  ],
+  "notSupported": [
+    {
+      "id": "bedrock-converse",
+      "label": "AWS Bedrock Converse",
+      "reason": "需要 SigV4 签名（AccessKey + Secret + region），不是填一个 API Key 能覆盖的鉴权模型"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Watch Agent Identity Schema",
+  "description": "手表 Agent 身份持久化格式，与外部生态身份适配器兼容",
+  "type": "object",
+  "required": ["root_id", "created_at", "client_version", "device_info"],
+  "properties": {
+    "root_id": {
+      "type": "string",
+      "description": "外部生态统一 Agent 身份 ID，跨设备共享。格式: watch-{uuid hex 12}"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "身份首次创建时间 (ISO8601)"
+    },
+    "client_version": {
+      "type": "string",
+      "description": "客户端版本标识"
+    },
+    "device_info": {
+      "type": "object",
+      "description": "当前注册的设备信息",
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": ["blueos"]
+        },
+        "device_name": { "type": "string" },
+        "device_id": { "type": "string" },
+        "firmware_version": { "type": "string" }
+      },
+      "required": ["platform"]
+    },
+    "external_network": {
+      "type": "object",
+      "description": "外部生态网络连接信息（预留字段）",
+      "properties": {
+        "hub_url": { "type": "string" },
+        "last_connected": { "type": "string", "format": "date-time" },
+        "session_token": { "type": "string" }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "已注册的能力列表",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "version": { "type": "string" }
+        }
+      }
+    }
+  }
+}
