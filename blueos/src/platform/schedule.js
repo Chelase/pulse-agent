@@ -14,6 +14,12 @@ const TYPE_REALTIME_ELAPSED = 2
 /** 单个 tick 的软预算：超过就把剩下的活留给下一次唤醒。 */
 export const DEFAULT_TICK_BUDGET_MS = 1500
 
+/**
+ * 注册回调兜底。平台既不走 success 也不走 fail 时（真机上出现过整条启动链
+ * 停在 heartbeat.start 不动的情况），Promise 会永远 pending，启动就卡死在这一步。
+ */
+export const REGISTER_TIMEOUT_MS = 3000
+
 export const Scheduler = {
   /**
    * 注册周期心跳。
@@ -25,21 +31,41 @@ export const Scheduler = {
    */
   register({ intervalMs, method, params = {} }) {
     return new Promise((resolve) => {
-      schedule.scheduleJob({
-        type: TYPE_REALTIME_ELAPSED,
-        // type=2 下 timeout 是「距首次执行的间隔（毫秒）」，不是时间戳。
-        // 之前传 Date.now() 会把首次触发排到几十年后，心跳等于永不启动。
-        timeout: intervalMs,
-        interval: intervalMs,
-        triggerMethod: method,
-        params,
-        success: (res) => resolve(res && res.id !== undefined ? res.id : -1),
-        fail: (data, code) => {
-          // -27 定时任务已满 / -28 已注册：都属于「已有心跳在跑」，不是致命错误
-          console.warn(`[Scheduler] register failed: ${data} (${code})`)
-          resolve(-1)
+      let settled = false
+      let timer = null
+      const settle = (id) => {
+        if (settled) return false
+        settled = true
+        if (timer) clearTimeout(timer)
+        resolve(id)
+        return true
+      }
+
+      timer = setTimeout(() => {
+        if (settle(-1)) {
+          console.warn(`[Scheduler] register timeout(${REGISTER_TIMEOUT_MS}ms), 按注册失败处理`)
         }
-      })
+      }, REGISTER_TIMEOUT_MS)
+
+      try {
+        schedule.scheduleJob({
+          type: TYPE_REALTIME_ELAPSED,
+          // type=2 下 timeout 是「距首次执行的间隔（毫秒）」，不是时间戳。
+          // 之前传 Date.now() 会把首次触发排到几十年后，心跳等于永不启动。
+          timeout: intervalMs,
+          interval: intervalMs,
+          triggerMethod: method,
+          params,
+          success: (res) => settle(res && res.id !== undefined ? res.id : -1),
+          fail: (data, code) => {
+            // -27 定时任务已满 / -28 已注册：都属于「已有心跳在跑」，不是致命错误
+            if (settle(-1)) console.warn(`[Scheduler] register failed: ${data} (${code})`)
+          }
+        })
+      } catch (e) {
+        settle(-1)
+        console.warn('[Scheduler] register threw: ' + (e && e.message ? e.message : e))
+      }
     })
   },
 

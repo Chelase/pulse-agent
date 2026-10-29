@@ -20,14 +20,14 @@ const PHASE_TEXT = {
   applying: ['正在写入配置', '马上好'],
   done: ['LLM 已配置', '配置已热加载，可以开始干活'],
   configured: ['LLM 已配置', '执行层运行中'],
-  'no-url': ['缺少引导地址', '在电脑上执行：node scripts/llm-config.js sync-simulator'],
+  'no-url': ['缺少引导地址', '填 blueos/src/assets/runtime-config.js 的地址后重新打包'],
   failed: ['引导失败', '']
 }
 
 export default {
   data: {
     statusText: '启动中',
-    statusDetail: '',
+    statusDetail: '执行层启动中…',
     qrValue: '',
     code: '',
     showQr: false,
@@ -70,10 +70,23 @@ export default {
     const ob = state.onboarding || {}
     const phase = ob.phase || (state.llm && state.llm.configured ? 'configured' : 'idle')
     const mapped = PHASE_TEXT[phase] || PHASE_TEXT.idle
+    const steps = state.steps || []
+    const degraded = steps.filter(s => !s.ok).map(s => s.name)
+    const total = state.stepTotal || steps.length
+
     this.statusText = mapped[0]
-    this.statusDetail = phase === 'failed'
-      ? (ob.error || '未知错误')
-      : (state.ready ? mapped[1] : '执行层启动中…')
+    if (phase === 'failed') {
+      this.statusDetail = ob.error || '未知错误'
+    } else if (!state.ready) {
+      // 卡住时页面就是唯一可读的排障面：不显示步数等于让用户猜
+      this.statusDetail = state.failedStep
+        ? '停在 ' + state.failedStep + '（' + steps.length + '/' + total + '）'
+        : '执行层启动中… ' + steps.length + '/' + total
+    } else if (degraded.length) {
+      this.statusDetail = mapped[1] + '｜降级 ' + degraded.join('、')
+    } else {
+      this.statusDetail = mapped[1]
+    }
     this.code = ob.code || ''
     this.qrValue = ob.qrValue || ''
     this.showQr = phase === 'waiting' && !!this.qrValue

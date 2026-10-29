@@ -20,6 +20,35 @@ import { Heartbeat } from './heartbeat'
 
 let _instance = null
 
+/**
+ * 单步超时。真机上任何一个平台回调不返回都能把整条启动链挂死，
+ * 表现出来就是首页永远停在「启动中」——个例见 heartbeat 的定时任务注册。
+ */
+const STEP_TIMEOUT_MS = 5000
+
+/** 只这几步失败才算「没起来」；其余是可选增强，降级也要继续跑。 */
+const CRITICAL_STEPS = ['identity.init', 'context.init', 'agentLoop.init']
+
+function withTimeout(task, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`step timeout after ${ms}ms`))
+    }, ms)
+    Promise.resolve()
+      .then(task)
+      .then(
+        (value) => {
+          clearTimeout(timer)
+          resolve(value)
+        },
+        (err) => {
+          clearTimeout(timer)
+          reject(err)
+        }
+      )
+  })
+}
+
 export class AgentRuntime {
   constructor() {
     if (_instance) {
@@ -27,6 +56,7 @@ export class AgentRuntime {
     }
     this.ready = false
     this.failedStep = ''
+    this.stepResults = []
     this._lastEvent = ''
     this._eventBusy = false
     this.identity = new Identity()
@@ -76,34 +106,54 @@ export class AgentRuntime {
       { name: 'healthBridge.start', fn: () => this.healthBridge.start() },
       { name: 'heartbeat.start', fn: () => this.heartbeat.start() }
     ]
+    this.stepTotal = steps.length
     console.log('[Runtime] start begin')
-    let failedStep = 'unknown'
     this.failedStep = ''
-    try {
-      for (let i = 0; i < steps.length; i++) {
-        const step = steps[i]
-        failedStep = step.name
-        console.log(`[Runtime] step${i + 1}: ${step.name}...`)
-        await step.fn()
-        console.log(`[Runtime] step${i + 1} done: ${step.name}`)
-      }
-      this.ready = true
-      this.failedStep = ''
-      console.log('[Runtime] started, rootId=' + this.identity.getRootId())
+    this.stepResults = []
+
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i]
+      const startedAt = Date.now()
+      console.log(`[Runtime] step${i + 1}: ${step.name}...`)
       try {
-        const llm = this.agentLoop && this.agentLoop.llm
-        this.configOnboarding = new ConfigOnboarding(llm, this.identity)
-        await this.configOnboarding.start()
-      } catch (onboardErr) {
-        console.warn('[Runtime] config onboarding skipped:', onboardErr && onboardErr.message ? onboardErr.message : onboardErr)
+        await withTimeout(step.fn, STEP_TIMEOUT_MS)
+        this.stepResults.push({ name: step.name, ok: true, error: '', ms: Date.now() - startedAt })
+        console.log(`[Runtime] step${i + 1} done: ${step.name}`)
+      } catch (e) {
+        const error = e && e.message ? e.message : String(e)
+        this.stepResults.push({ name: step.name, ok: false, error, ms: Date.now() - startedAt })
+        if (!this.failedStep) this.failedStep = step.name
+        console.warn(`[Runtime] step${i + 1} failed: ${step.name}, error: ${error}`)
+        // 关键步骤失败就停下来继续装配没有意义；可选步骤降级继续，避免一个外围
+        // 模块把首启引导一起吞掉（真机表现就是永远停在「启动中」）
+        if (CRITICAL_STEPS.indexOf(step.name) !== -1) break
       }
-    } catch (e) {
-      this.failedStep = failedStep
-      console.error(`[Runtime] start failed at step: ${failedStep}, error: ${e && e.message ? e.message : String(e)}`)
-      if (e && e.stack) {
-        console.error('[Runtime] stack: ' + e.stack)
+    }
+
+    const criticalFailure = this.stepResults.find(
+      r => !r.ok && CRITICAL_STEPS.indexOf(r.name) !== -1
+    )
+    this.ready = !criticalFailure
+    console.log(`[Runtime] startup: ${this.ready ? 'ready' : 'not ready'}, steps=${this.stepResults.length}/${steps.length}`
+      + (this.failedStep ? `, failedStep=${this.failedStep}` : ''))
+    if (this.ready) {
+      let rootId = 'uninitialized'
+      try {
+        rootId = this.identity.getRootId()
+      } catch (e) {
+        rootId = 'uninitialized'
       }
-      throw e
+      console.log('[Runtime] started, rootId=' + rootId)
+    }
+
+    // 引导与「执行层是否完全就绪」解耦：只要核心装配完成就出码，否则手表屏
+    // 永远停在启动中，用户连配置入口都看不到。
+    try {
+      const llm = this.agentLoop && this.agentLoop.llm
+      this.configOnboarding = new ConfigOnboarding(llm, this.identity)
+      await this.configOnboarding.start()
+    } catch (onboardErr) {
+      console.warn('[Runtime] config onboarding skipped:', onboardErr && onboardErr.message ? onboardErr.message : onboardErr)
     }
   }
 
@@ -212,6 +262,9 @@ export class AgentRuntime {
     return {
       ready: this.ready,
       failedStep: this.failedStep || '',
+      // 手表端没有控制台，首页是唯一能读到启动结果的地方
+      steps: (this.stepResults || []).map(s => ({ name: s.name, ok: s.ok, error: s.error })),
+      stepTotal: this.stepTotal || 0,
       deviceId: this.identity.getDeviceId() || 'uninitialized',
       lastHeartRate: healthState.heartRate || 0,
       lastEvent: this._lastEvent || '',

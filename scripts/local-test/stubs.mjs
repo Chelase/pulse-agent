@@ -46,7 +46,11 @@ export function getKV(key) {
 // ---------------- KV 存储 ----------------
 
 export const storageStub = {
-  set({ key, value, success }) {
+  set({ key, value, success, fail }) {
+    if (this.failSet) {
+      if (fail) fail('storage full', 500)
+      return
+    }
     memory.kv.set(key, value)
     if (success) success()
   },
@@ -270,6 +274,11 @@ export const scheduleStub = {
     this._byMethod[methodName] = fn
   },
   scheduleJob({ type, timeout, interval, triggerMethod, params, success, fail }) {
+    if (this.hangNext) {
+      // 平台既不 success 也不 fail：真机上出现过整条启动链停在这一步
+      this.hangNext = false
+      return undefined
+    }
     if (this.failNext) {
       this.failNext = false
       if (fail) fail('generic error', 200)
@@ -298,6 +307,7 @@ export const scheduleStub = {
     this._byMethod = {}
     this._nextId = 1
     this.failNext = false
+    this.hangNext = false
   }
 }
 
