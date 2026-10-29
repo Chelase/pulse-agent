@@ -87,7 +87,7 @@ untime.start() / LLMClient.init()：未配置触发 onboarding，**不阻塞** r
 ## 一期实现备忘
 
 - Setup：`node scripts/setup-server/server.js --host 0.0.0.0`（默认只绑 `127.0.0.1`，手表/模拟器要访问必须换成 `0.0.0.0` 或局域网 IP）；启动后自动打开本机浏览器，桩测用 `--no-open` 关掉。
-- 引导地址来源：`node scripts/llm-config.js sync-simulator` 会把 `setup-config.json`（默认 `http://<本机局域网IP>:8790`，可 `--setup-url` 覆盖）连同 `llm-config.json` 一起写进模拟器 agent 目录；也可手写 KV `setup_config.baseUrl`。
+- 引导地址来源（三处兜底，按优先级）：① KV `setup_config.baseUrl`；② `internal://files/agent/setup-config.json`；③ 构建期默认 `blueos/src/assets/runtime-config.js` 的 `setupBaseUrl`。`node scripts/llm-config.js sync-simulator` 会把 `setup-config.json`（默认 `http://<本机局域网IP>:8790`，可 `--setup-url` 覆盖）连同 `llm-config.json` 一起写进模拟器 agent 目录——但**只对模拟器有效**，真机上这两处都没有写入通道，只能靠构建期默认地址（改完重新打包安装）。
 - **手表不能拉起手机浏览器**（平台无控制手机的能力，且不做手机 App）。落地形态是手表屏出二维码：`pages/index` 用官方 `qrcode` 组件渲染 `setupUrl?code=<6位码>`，手机扫码直接进填 Key 页（H5 读 `?code=` 预填）。
 - 页面状态来源是 `runtime.getState().onboarding`：`no-url / requesting / waiting / applying / done / failed`，页面每秒轮询刷新，`onHide/onDestroy` 释放定时器。
 - 轮询响应必须先判 `error` 再判「未就绪」：错误体里没有 endpoint/apiKey，顺序反了会被当成还没提交而无限轮询。

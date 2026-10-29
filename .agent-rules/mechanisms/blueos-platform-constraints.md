@@ -72,16 +72,25 @@ blueos.app.notification.notificationManager → system.notification
 - `ScheduleFeature scheduleJob error`：模拟器不支持平台定时任务（`@blueos.app.appmanager.schedule` → system.schedule），
   代码已有降级：心跳退化为进程内 60 秒定时器（真机则走系统级后台拉起）。模拟器上见到它 = 正常走了降级路径。
 
-## 真机安装通道（2026-10-25 核实：个人开发者不可用）
+## 真机安装通道（2026-10-27 修订）
 
 - **官方快速入门**（developers-watch.vivo.com.cn/reference/quickstart/quick-start）只覆盖模拟器调试与 IDE 打包
   （「打包」按钮选 release/debug + 环境；release 需先生成签名证书，成功后 rpk 落在项目 `dist/`），**通篇没有真机安装/真机调试章节**。
-- **社区实测口径**（知乎 2024-11 踩坑帖）：普通用户未开放真机调试，rpk 只能经 vivo 开放平台上架应用商店，
-  而上架要求**企业资质**；个人开发者拿不到手表侧安装通道。
-- **手机不能当蓝牙安装网关**：手表蓝牙链路是伴侣通道（通知/健康/通话），不是应用安装通道；
-  手机侧（即使 root/SSH 进 Termux）没有任何可调用的官方接口能把 rpk 塞进手表系统安装器。
-  rpk 签名校验在手表系统层，自签/无证书包装不上。
-- **结论**：现阶段模拟器是唯一可运行目标；上真表只有「企业资质 + 应用商店上架」一条官方路。
+- **官方口径**（知乎 2024-11 踩坑帖）：普通用户未开放真机调试，rpk 只能经 vivo 开放平台上架应用商店，
+  而上架要求**企业资质**。
+- **社区工具通了一条路（2026-10-27 实测）**：**OrbitV**（`E:\Apps\OrbitV`，Flutter + `flutter_blue_plus`，
+  经经典蓝牙 + BLE 连表）的「扩展与文件 → 本地文件」可以装本地 rpk。实测 `com.pulse.agent` 0.1.0（90KB 自签 rpk，
+  `blueos/sign` 证书）已装进 vivo WATCH 5 3AD，界面显示「已安装」。**所以上真表不等于必须走应用商店。**
+- **真机排障没有命令行通道（同日实测）**：
+  - `adb devices`（Studio 自带 `extensions/node_modules/adb-driver/bin/window/adb.exe`）看不到表；真机不走 adb。
+  - PC 侧只能看到表的**经典蓝牙**节点（`BTHENUM\DEV_E4965282B3AD`）；BLE 侧没有 `BTHLE\DEV_*` 记录，
+    OrbitV 占用链路期间表也不广播，`bleak` 扫不到、按地址直连报 `BleakDeviceNotFoundError`。
+  - OrbitV 自身日志是密文（`%LOCALAPPDATA%\OrbitV\log\app_*.log`，`Onj2udvACLk...` 前缀），不可读。
+  - 手表信息可从 OrbitV 的本地状态读出：`%APPDATA%\com.yyh\OrbitV\shared_preferences.json` 的
+    `flutter.watch_sn` / `flutter.watch_version`（`watch_init_profile.watchVersion`）/ `flutter.last_device_name` /
+    `watch_init_profile`（packSize=4096、maxDataLength=10253 等传包参数）。
+  - **结论：真机上唯一可读的排障面是应用自己的首页**（`pages/index` 显示启动步骤、失败步骤与引导阶段），
+    所以启动链必须把每步结果与失败原因暴露到 `getState()`，不能只 `console.log`。
 
 ## Studio 2.2.1 打包功能实测（2026-10-26）
 
@@ -105,7 +114,7 @@ blueos.app.notification.notificationManager → system.notification
 
 ## 使用点
 
-- `runtime.start()` 的十三步装配与 `heartbeat.start()` 依赖定时任务语义。
+- `runtime.start()` 的十一步装配与 `heartbeat.start()` 依赖定时任务语义（每步 5s 超时，定时任务 3s 不回调即降级）。
 - `app.ux` 的 `agentTick` 依赖「triggerMethod 必须是 app.ux 上的方法名」。
 - `agent-core/config-onboarding.js` 的对外连接依赖 fetch/websocket 主动外连。
 - `blueos/src/pages/index/index.ux` 存在的直接原因是「必须有首页」。
@@ -137,4 +146,4 @@ blueos.app.notification.notificationManager → system.notification
 - **待补核清单**：权限白名单机制、`background` 顶层字段（官方示例为 `{type:'health', patterns:[...]}`）与本项目 `config.background.features` 的关系、定时任务最小 interval、GATT `characteristics.properties` 字段形态。
 - **蓝河 4 跟进**：AgentOS/能力总线/原子技能的第三方接入文档放出后，新增独立机制文档，不要覆盖本文件（本文件是 3 代实机可依据的现状）。
 
-> 更新时间：2026-10-26
+> 更新时间：2026-10-27

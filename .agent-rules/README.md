@@ -77,6 +77,7 @@
 - mechanisms/phone-first-boot-config.md — **目标态草案**：生产首启设备码 + 浏览器 H5（无手机 App）。
 - mechanisms/resident-heartbeat-chain.md — 常驻心跳：平台定时任务后台拉起 app.ux、落盘队列单步续跑、BLE 入站服务面、MCP 工具桥。
 - mechanisms/blueos-platform-constraints.md — BlueOS 官方文档核对出的平台硬约束（无常驻进程、无端口监听、app.ux 即首页、后台运行需商务开通等）。
+- mechanisms/agent-harness-layer.md — Agent harness 分层：系统提示分节组装、工具 permission 分级与执行裁决、工具输出体积治理与运行环境快照。
 
 > 新增机制文档时在此追加索引，并保持与 `mechanisms/README.md` 一致。
 > 新增机制文档必须按 `mechanisms/README.md` 的七段强制结构编写（结论 → 涉及对象 → 运行链路 → 使用点 → 修改点 → 关键约束 → 维护方式），并遵守禁止写入内容清单。

@@ -46,6 +46,7 @@
 - phone-first-boot-config.md — **目标态草案**：生产首启用设备码 + 系统浏览器 H5（无手机 App、不依赖外部生态）写入表上 llm-config；研发现状见 llm-configuration.md。
 - resident-heartbeat-chain.md — 常驻心跳链路：平台定时任务后台拉起 app.ux 心跳方法、落盘任务队列的单步续跑与预算退出、BLE GATT 入站服务面、MCP 工具桥。
 - blueos-platform-constraints.md — BlueOS 官方文档核对出的平台硬约束：无常驻进程、无端口监听、app.ux 即首页、后台运行需联系商务、通知/采样/AI 服务的实际边界与数值。
+- agent-harness-layer.md — Agent harness 分层：系统提示分节组装（PromptAssembler）、工具 permission 分级与执行裁决（ToolRegistry）、工具输出体积治理与运行环境快照。
 
 > 新增机制文档时在此追加索引。
 > 示例格式：`- <topic>.md — 一句话说明覆盖范围。`

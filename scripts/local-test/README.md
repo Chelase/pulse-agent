@@ -26,6 +26,8 @@ node scripts/local-test/run.mjs
 | `runtime.test.mjs` | 端到端集成：九步启动 → 采样 → 闸门 → LLM → 通知 + 振动；静默期、外部任务入口、stop 后不再处理 |
 | `llm-config-cli.test.mjs` | CLI/Web 配置：本地文件、脱敏 show、Web GET/POST、留空 Key 保留 |
 | `llm-config.test.mjs` | BlueOS LLM 客户端：供应商、endpoint、API Key、模型与请求参数 |
+| `harness-layer.test.mjs` | harness 分层：工具拒绝/异常结构化、事件禁写工具、拒绝回填、系统提示分节、工具输出截断、环境快照、上下文体积上限 |
+| `startup.test.mjs` | 启动链韧性：平台定时任务不回调时仍能跑完、关键步骤失败可读且引导照常起来 |
 
 ## 它是怎么工作的
 
