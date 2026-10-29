@@ -6,12 +6,16 @@
 import { Storage } from '../platform/storage'
 
 const CONTEXT_KEY = 'agent_context'
-// 不截断对话内容的语义上限；只防「每次 addMessage 全量写 KV」在长期使用后失控
+// 两条上限一起兜底长期使用后的 KV 体积：
+// - maxMessages 按条数丢最旧的
+// - maxChars 按总体积丢最旧的（只丢整条，不截断单条内容）
 const DEFAULT_MAX_MESSAGES = 200
+const DEFAULT_MAX_CHARS = 12000
 
 export class ContextManager {
-  constructor(maxMessages = DEFAULT_MAX_MESSAGES) {
+  constructor(maxMessages = DEFAULT_MAX_MESSAGES, maxChars = DEFAULT_MAX_CHARS) {
     this.maxMessages = maxMessages
+    this.maxChars = maxChars
   }
 
   async init() {
@@ -52,6 +56,14 @@ export class ContextManager {
     if (this.messages.length > this.maxMessages) {
       this.messages = this.messages.slice(-this.maxMessages)
     }
+    // 体积上限：只丢最旧的整条消息，最后一条永远保留
+    while (this.messages.length > 1 && this._totalChars() > this.maxChars) {
+      this.messages.shift()
+    }
+  }
+
+  _totalChars() {
+    return this.messages.reduce((sum, m) => sum + String(m.content || '').length, 0)
   }
 
   async _save() {

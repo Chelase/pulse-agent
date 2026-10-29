@@ -13,20 +13,22 @@
  */
 
 import { LLMClient } from './llm-client'
+import { createPromptAssembler } from './prompt-assembler'
+import { environmentSnapshot } from './runtime-environment'
+import { formatToolResult } from './tool-output'
 
 // 不封顶：任务可跨心跳窗口续跑，步数不再是「跑不完」的原因。
 // 只留一个防失控硬顶：模型连续吐工具调用停不下来时兜底，避免无限烧电烧钱。
 const TOOL_STEP_HARD_LIMIT = 50
+// 事件路径追求低延迟、低功耗：跑两步工具还不收敛就强制收口。
+const EVENT_STEP_HARD_LIMIT = 2
 
-const SYSTEM_PROMPT = `你是 Pulse Agent，一个运行在智能手表上的 AI 助手。
-
-调用工具时，只输出一个 JSON 对象，不要包裹其它文字：
+const SYSTEM_PROMPT = `调用工具时，只输出一个 JSON 对象，不要包裹其它文字：
 {"tool": "工具名", "params": {...}}
 
 工具执行结果会以「工具 xxx 返回：...」的形式回填给你。拿到足够信息后，必须用自然语言给出最终结论，不要再输出 JSON。`
 
-const EVENT_SYSTEM_PROMPT = `你是 Pulse Agent，一个运行在智能手表上的 AI 助手。
-现在有一条传感器事件跨过了本地闸门，需要你判断是否值得打扰用户。
+const EVENT_SYSTEM_PROMPT = `现在有一条传感器事件跨过了本地闸门，需要你判断是否值得打扰用户。
 
 判断依据：
 - 结合事件数据与当前状态，区分「真实异常」与「运动、佩戴状态变化等正常波动」；
@@ -47,6 +49,8 @@ export class AgentLoop {
     this.context = contextManager
     this.tools = toolRegistry
     this.skills = skillRegistry || null
+    this.promptAssembler = createPromptAssembler()
+    this.environmentProvider = null
     this.llm = new LLMClient()
     // 防失控硬顶，可在测试或调优时下调；默认不封顶到 50 步
     this.stepHardLimit = TOOL_STEP_HARD_LIMIT
@@ -54,6 +58,11 @@ export class AgentLoop {
 
   async init() {
     await this.llm.init()
+  }
+
+  /** 由运行时注入实时状态；不注入时退化为工具/技能计数与当前时间。 */
+  setEnvironmentProvider(provider) {
+    this.environmentProvider = typeof provider === 'function' ? provider : null
   }
 
   /**
@@ -102,10 +111,10 @@ export class AgentLoop {
     if (toolCall && task.stepsUsed < budget) {
       task.stepsUsed += 1
       task.messages.push({ role: 'assistant', content })
-      const result = await this._executeTool(toolCall)
+      const result = await this._executeTool(toolCall, { kind: task.kind })
       task.messages.push({
         role: 'user',
-        content: `工具 ${toolCall.tool} 返回：${JSON.stringify(result)}`
+        content: `工具 ${toolCall.tool} 返回：${formatToolResult(result)}`
       })
       return true
     }
@@ -118,14 +127,14 @@ export class AgentLoop {
     if (task.kind === 'event') {
       const skillHit = this.skills ? this.skills.match(task.event && task.event.conditionId) : null
       return [
-        { role: 'system', content: EVENT_SYSTEM_PROMPT + this._toolListBlock() + this._skillBlock(skillHit) },
+        { role: 'system', content: this._systemPrompt(EVENT_SYSTEM_PROMPT, skillHit) },
         { role: 'user', content: this._formatEvent(task.event) }
       ]
     }
 
     const skillHit = this.skills ? this.skills.matchText(task.instruction) : null
     return [
-      { role: 'system', content: SYSTEM_PROMPT + this._toolListBlock() + this._skillBlock(skillHit) },
+      { role: 'system', content: this._systemPrompt(SYSTEM_PROMPT, skillHit) },
       ...this.context.getRecentMessages().map(m => ({ role: m.role, content: m.content })),
       { role: 'user', content: task.instruction }
     ]
@@ -187,14 +196,16 @@ export class AgentLoop {
     const messages = [
       {
         role: 'system',
-        content: EVENT_SYSTEM_PROMPT + this._toolListBlock()
-          + this._skillBlock(this.skills ? this.skills.match(event && event.conditionId) : null)
+        content: this._systemPrompt(
+          EVENT_SYSTEM_PROMPT,
+          this.skills ? this.skills.match(event && event.conditionId) : null
+        )
       },
       { role: 'user', content: this._formatEvent(event) }
     ]
 
     try {
-      const raw = await this._runLoop(messages, this.stepHardLimit)
+      const raw = await this._runLoop(messages, EVENT_STEP_HARD_LIMIT, { kind: 'event' })
       if (!raw) return null
       const verdict = this._parseEventVerdict(raw)
       await this._emitVerdict(event, verdict)
@@ -209,7 +220,7 @@ export class AgentLoop {
    * 有界 ReAct 循环。messages 由调用方提供，循环内的中间消息只存在于本地数组，
    * 不会写进对话历史。
    */
-  async _runLoop(messages, maxSteps) {
+  async _runLoop(messages, maxSteps, context = {}) {
     for (let step = 0; step < maxSteps; step++) {
       const reply = await this.llm.chat(messages)
       const content = reply && reply.content
@@ -220,10 +231,10 @@ export class AgentLoop {
 
       console.log(`[AgentLoop] step${step + 1} tool=${toolCall.tool} params=${JSON.stringify(toolCall.params)}`)
       messages.push({ role: 'assistant', content })
-      const result = await this._executeTool(toolCall)
+      const result = await this._executeTool(toolCall, context)
       messages.push({
         role: 'user',
-        content: `工具 ${toolCall.tool} 返回：${JSON.stringify(result)}`
+        content: `工具 ${toolCall.tool} 返回：${formatToolResult(result)}`
       })
     }
 
@@ -237,19 +248,16 @@ export class AgentLoop {
     return finalReply && finalReply.content ? finalReply.content : null
   }
 
-  async _executeTool(toolCall) {
-    try {
-      return await this.tools.execute(toolCall.tool, toolCall.params)
-    } catch (err) {
-      console.error('[AgentLoop] tool failed:', toolCall.tool, err)
-      return { success: false, error: err && err.message ? err.message : String(err) }
-    }
+  async _executeTool(toolCall, context = {}) {
+    const result = await this.tools.execute(toolCall.tool, toolCall.params, context)
+    console.log(`[AgentLoop] tool done name=${toolCall.tool} status=${result.status || (result.success === false ? 'error' : 'ok')}`)
+    return result
   }
 
   _buildMessages(text) {
     const hit = this.skills ? this.skills.matchText(text) : null
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT + this._toolListBlock() + this._skillBlock(hit) },
+      { role: 'system', content: this._systemPrompt(SYSTEM_PROMPT, hit) },
       ...this.context.getRecentMessages().map(m => ({
         role: m.role,
         content: m.content
@@ -258,11 +266,17 @@ export class AgentLoop {
     return messages
   }
 
-  _toolListBlock() {
-    const toolDesc = this.tools.getTools()
-      .map(t => `- ${t.name}: ${t.description}`)
+  _systemPrompt(base, hit) {
+    const tools = this.tools.getTools()
+      .map(tool => `- ${tool.name}: ${tool.description}`)
       .join('\n')
-    return '\n\n可用工具列表：\n' + toolDesc
+    const environment = environmentSnapshot(this.environmentProvider
+      ? this.environmentProvider()
+      : { tools: this.tools.getTools().length, skills: this.skills ? this.skills.list().length : 0 })
+    const capabilities = `可用工具列表：\n${tools || '（无）'}`
+      + (this.skills ? this.skills.getFrontmatterBlock() : '')
+    const assembled = this.promptAssembler.assemble({ environment, capabilities })
+    return [assembled, base, this._skillBlock(hit)].filter(Boolean).join('\n\n')
   }
 
   /**
@@ -307,10 +321,10 @@ export class AgentLoop {
       await this._executeTool({
         tool: 'notification_send',
         params: { title: event.description || 'Pulse Agent', text: verdict.notify }
-      })
+      }, { kind: 'runtime' })
     }
     if (verdict.vibrate) {
-      await this._executeTool({ tool: 'vibrate', params: { mode: 'long' } })
+      await this._executeTool({ tool: 'vibrate', params: { mode: 'long' } }, { kind: 'runtime' })
     }
   }
 

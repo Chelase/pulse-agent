@@ -64,6 +64,9 @@ check('事件 system prompt 常驻 skill frontmatter', eventCall.data.messages[0
 check('事件 system prompt 按 trigger 注入 skill 正文', eventCall.data.messages[0].content.indexOf('健康异常事件处置') !== -1, true)
 check('事件 system prompt 含工具清单', eventCall.data.messages[0].content.indexOf('notification_send') !== -1, true)
 check('事件 user 消息是事件载荷', eventCall.data.messages[1].content.indexOf('sustained_high_heart_rate') !== -1, true)
+// 运行环境段必须来自 runtime 注入的真实状态，而不是 agent-loop 的兜底值
+check('系统提示含真实就绪态', eventCall.data.messages[0].content.indexOf('就绪：是') !== -1, true)
+check('系统提示含真实工具数', eventCall.data.messages[0].content.indexOf('已注册工具：' + runtime.toolRegistry.getTools().length + ' 个') !== -1, true)
 
 // ---------- 静默期内不重复触发 ----------
 memory.notifications.length = 0

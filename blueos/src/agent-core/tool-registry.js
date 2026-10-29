@@ -38,6 +38,7 @@ export class ToolRegistry {
       name: tool.name,
       description: tool.description || '',
       parameters: tool.parameters || {},
+      permission: tool.permission || 'ask',
       execute: tool.execute
     })
     return tool.name
@@ -47,17 +48,30 @@ export class ToolRegistry {
     return !!this.tools.find(t => t.name === name)
   }
 
-  async execute(name, params = {}) {
+  async execute(name, params = {}, context = {}) {
     const tool = this.tools.find(t => t.name === name)
     if (!tool) {
-      throw new Error(`Unknown tool: ${name}`)
+      return { success: false, status: 'rejected', reason: 'unknown_tool', message: `Unknown tool: ${name}` }
     }
-    return tool.execute(params)
+    if (context.kind === 'event' && tool.permission === 'write') {
+      return { success: false, status: 'rejected', reason: 'event_policy', message: '事件任务不能执行写入类工具' }
+    }
+    try {
+      return await tool.execute(params)
+    } catch (error) {
+      return {
+        success: false,
+        status: 'error',
+        reason: 'tool_error',
+        message: error && error.message ? error.message : String(error)
+      }
+    }
   }
 
   _registerBuiltins() {
     this.tools.push({
       name: 'file_read',
+      permission: 'read',
       description: '读取本地文件内容',
       parameters: { path: 'string' },
       execute: async ({ path }) => {
@@ -68,6 +82,7 @@ export class ToolRegistry {
 
     this.tools.push({
       name: 'file_write',
+      permission: 'write',
       description: '写入内容到本地文件',
       parameters: { path: 'string', content: 'string' },
       execute: async ({ path, content }) => {
@@ -78,6 +93,7 @@ export class ToolRegistry {
 
     this.tools.push({
       name: 'notification_send',
+      permission: 'write',
       description: '发送通知',
       parameters: { title: 'string', text: 'string' },
       execute: async ({ title, text }) => {
@@ -88,6 +104,7 @@ export class ToolRegistry {
 
     this.tools.push({
       name: 'vibrate',
+      permission: 'write',
       description: "触发振动反馈，mode 取 'short' 或 'long'",
       parameters: { mode: 'string' },
       execute: async ({ mode = 'short' }) => {
@@ -98,6 +115,7 @@ export class ToolRegistry {
 
     this.tools.push({
       name: 'get_heart_rate',
+      permission: 'read',
       description: '获取最新心率数据',
       parameters: {},
       execute: async () => {
@@ -107,6 +125,7 @@ export class ToolRegistry {
 
     this.tools.push({
       name: 'get_step_count',
+      permission: 'read',
       description: '获取今日步数',
       parameters: {},
       execute: async () => {
@@ -116,6 +135,7 @@ export class ToolRegistry {
 
     this.tools.push({
       name: 'get_sensor_data',
+      permission: 'read',
       description: '获取传感器状态',
       parameters: {},
       execute: async () => {

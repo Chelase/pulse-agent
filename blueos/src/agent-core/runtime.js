@@ -43,6 +43,8 @@ export class AgentRuntime {
       this.healthBridge
     )
     this.agentLoop = new AgentLoop(this.context, this.toolRegistry, this.skillRegistry)
+    // 系统提示里的「运行环境」必须是真实状态，不能是恒为 unknown 的占位
+    this.agentLoop.setEnvironmentProvider(() => this._environmentSnapshot())
     this.configOnboarding = null
     // 常驻三件套：落盘队列 + 定时任务表 + 心跳。心跳每次醒来只推进一点活。
     this.taskQueue = new TaskQueue()
@@ -188,6 +190,18 @@ export class AgentRuntime {
     if (task.status === 'done') return { task_id: id, status: 'completed', result: task.result }
     if (task.status === 'failed') return { task_id: id, status: 'failed', error: task.result }
     return { task_id: id, status: 'accepted', note: '后台窗口预算用尽，任务留在队列由心跳继续' }
+  }
+
+  /**
+   * 给系统提示用的运行环境快照原料。只放不影响隐私、且能帮助模型判断的字段。
+   */
+  _environmentSnapshot() {
+    return {
+      ready: this.ready,
+      tools: this.toolRegistry ? this.toolRegistry.getTools().length : 0,
+      skills: this.skillRegistry ? this.skillRegistry.list().length : 0,
+      pendingTasks: this.taskQueue ? this.taskQueue.pendingCount() : 0
+    }
   }
 
   getState() {
