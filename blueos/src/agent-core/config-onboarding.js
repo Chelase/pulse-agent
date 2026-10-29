@@ -6,6 +6,7 @@
 import fetch from '@blueos.network.fetch'
 import { Storage } from '../platform/storage'
 import { Notification } from '../platform/notification'
+import { RUNTIME_CONFIG } from '../assets/runtime-config'
 
 const SETUP_CONFIG_KEY = 'setup_config'
 const DEFAULT_POLL_MS = 2000
@@ -77,7 +78,7 @@ export class ConfigOnboarding {
     if (!setup) {
       this._setStatus({
         phase: 'no-url',
-        error: '未配置 setupBaseUrl（KV setup_config 或文件 setup-config.json）'
+        error: '未配置 setupBaseUrl（构建期 assets/runtime-config.js、KV setup_config 或文件 setup-config.json）'
       })
       return
     }
@@ -196,6 +197,12 @@ export class ConfigOnboarding {
         if (parsed && parsed.baseUrl) return String(parsed.baseUrl).trim()
       }
     } catch (_) {}
+    // 真机上前两处都写不进去，只能靠打包时带进来的地址
+    const builtin = RUNTIME_CONFIG && RUNTIME_CONFIG.setupBaseUrl
+    if (builtin) {
+      console.log('[ConfigOnboarding] 使用构建期默认 setupBaseUrl: ' + builtin)
+      return String(builtin).trim()
+    }
     return ''
   }
 
