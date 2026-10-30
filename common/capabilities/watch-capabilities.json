@@ -83,7 +83,7 @@
     {
       "id": "notification_display",
       "name": "Notification Display",
-      "description": "接收并展示通知消息（闸门事件的默认输出通道之一）",
+      "description": "接收并展示通知消息（异常提醒的默认输出通道之一）",
       "tags": [
         "notification",
         "display"
@@ -108,50 +108,6 @@
         "haptic"
       ],
       "status": "implemented"
-    },
-    {
-      "id": "health_blood_oxygen",
-      "name": "Blood Oxygen Monitoring",
-      "description": "血氧饱和度(SpO2)感知与上报",
-      "tags": [
-        "health",
-        "sensor",
-        "spo2"
-      ],
-      "input_modes": [],
-      "output_modes": [
-        "event"
-      ],
-      "status": "planned"
-    },
-    {
-      "id": "health_activity",
-      "name": "Activity Recognition",
-      "description": "运动状态识别与上报（走/跑/骑/游/睡）",
-      "tags": [
-        "health",
-        "sensor",
-        "activity"
-      ],
-      "input_modes": [],
-      "output_modes": [
-        "event"
-      ],
-      "status": "planned"
-    },
-    {
-      "id": "health_sleep",
-      "name": "Sleep Tracking",
-      "description": "睡眠监测与阶段分析",
-      "tags": [
-        "health",
-        "sleep"
-      ],
-      "input_modes": [],
-      "output_modes": [
-        "event"
-      ],
-      "status": "planned"
     },
     {
       "id": "projection_display",

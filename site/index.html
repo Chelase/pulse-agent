@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pulse Agent · 被事件唤醒的手表 Agent</title>
-<meta name="description" content="Pulse Agent 是运行在 vivo 蓝河 BlueOS 上的独立手表 Agent：感知、闸门、思考、输出，在腕上完成本地闭环。">
+<meta name="description" content="Pulse Agent 是运行在 vivo 蓝河 BlueOS 上的独立手表 Agent：采集、筛选、判断、提醒，在腕上完成本地闭环。">
 <meta name="theme-color" content="#0b0c0a">
 <meta property="og:title" content="Pulse Agent · 被事件唤醒的手表 Agent">
-<meta property="og:description" content="本地闸门先筛噪声，跨过闸门的事件才交给 LLM，结果落回腕上振动。">
+<meta property="og:description" content="先用简单规则筛掉日常波动，只有真正可疑的读数才交给 AI 判断，结果落回腕上振动。">
 <meta property="og:type" content="website">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
   </a>
   <nav aria-label="主导航">
     <a href="#loop">四步闭环</a>
-    <a href="#demo">闸门演示</a>
+    <a href="#demo">筛选演示</a>
     <a href="#capabilities">能力</a>
     <a href="#start">快速开始</a>
   </nav>
@@ -40,9 +40,9 @@
   <div class="hero-copy">
     <p class="eyebrow"><span class="dot" aria-hidden="true"></span>vivo 蓝河 BlueOS · 独立手表 Agent</p>
     <h1>不等你开口，<br><em>事件</em>先唤醒它。</h1>
-    <p class="lede">Pulse Agent 订阅 BlueOS 系统自带的健康与传感器接口，不自研监测。本地规则先筛掉噪声，跨过闸门的事件才交给 LLM，结果以振动或通知落回手腕。</p>
+    <p class="lede">Pulse Agent 订阅 BlueOS 系统自带的健康与传感器接口，不自研监测。先用几条简单规则筛掉日常波动，只有真正可疑的读数才交给 AI 判断，结果以振动或通知落回手腕。</p>
     <div class="cta">
-      <a class="btn" href="#demo">试试闸门</a>
+      <a class="btn" href="#demo">看看怎么筛</a>
       <a class="btn btn-ghost" href="#start">快速开始</a>
     </div>
     <dl class="facts">
@@ -51,16 +51,16 @@
       <div><dt>数据来源</dt><dd>系统健康 / 传感器接口</dd></div>
     </dl>
   </div>
-  <figure class="watch" aria-label="示意图：闸门读到的系统心率样本与放行状态">
+  <figure class="watch" aria-label="示意图：手表采到的系统心率样本与筛选结果">
     <div class="bezel">
       <div class="face">
         <svg class="ring" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="96" fill="none" stroke="var(--line)" stroke-width="1"/><circle class="ring-run" cx="100" cy="100" r="96" fill="none" stroke="var(--pulse)" stroke-width="2" stroke-linecap="round" pathLength="100"/></svg>
         <p class="src">系统心率样本</p>
         <p class="bpm"><span id="bpm">72</span><small>BPM</small></p>
-        <p class="state" id="face-state">闸门未触发</p>
+        <p class="state" id="face-state">无需打扰</p>
       </div>
     </div>
-    <figcaption>示意图，非真实设备截图。手表端没有这样的界面，数值只用来演示闸门读到的系统样本。</figcaption>
+    <figcaption>示意图，非真实设备截图。手表端没有这样的界面，数值只用来演示筛选规则读到的系统样本。</figcaption>
   </figure>
 </section>
 <section class="section" id="loop">
@@ -72,22 +72,22 @@
   <ol class="steps">
     <li>
       <span class="num">1</span>
-      <h3>感知</h3>
+      <h3>采集</h3>
       <p>调用系统接口订阅心率、佩戴状态、抬腕和计步。数据由 BlueOS 的健康与传感器服务提供。</p>
     </li>
     <li class="gate">
       <span class="num">2</span>
-      <h3>闸门</h3>
-      <p>声明式的单信号规则：数据类型、比较符、阈值、持续时长、静默期。不为每个样本烧电。</p>
+      <h3>筛选</h3>
+      <p>几条简单规则先过一遍：什么算异常、要持续多久、提醒之后多久不再打扰。</p>
     </li>
     <li>
       <span class="num">3</span>
-      <h3>思考</h3>
-      <p>只有跨过闸门的事件进入 LLM，由它结合事件内容和本地工具给出结论。</p>
+      <h3>判断</h3>
+      <p>只有筛出来的读数才交给 AI，由它结合当前状态给出结论。</p>
     </li>
     <li>
       <span class="num">4</span>
-      <h3>输出</h3>
+      <h3>提醒</h3>
       <p>落回腕上，一次振动或一条通知。不需要你在手表上操作。</p>
     </li>
   </ol>
@@ -95,14 +95,14 @@
 
 <section class="section" id="demo">
   <header class="section-head">
-    <p class="kicker">02 / 闸门</p>
-    <h2>规则给 LLM 把门</h2>
-    <p>下面的条件直接取自仓库里的 <code>gate-conditions.json</code>。拖动数值和持续时间，看看什么样的样本值得叫醒 LLM。</p>
+    <p class="kicker">02 / 筛选</p>
+    <h2>不是每次心跳都值得打扰你</h2>
+    <p>手表一直在采集心率。但每天几万个读数，不可能每个都去问一遍 AI——那既费电又费钱。所以先在手表上用几条简单的规则筛一遍，只有真正可疑的读数才交给 AI 判断。</p>
   </header>
   <div class="demo" data-demo>
     <div class="demo-controls">
       <div class="field">
-        <label for="cond">闸门条件</label>
+        <label for="cond">筛选规则</label>
         <select id="cond"></select>
       </div>
       <div class="field">
@@ -110,7 +110,7 @@
         <input id="val" type="range">
       </div>
       <div class="field">
-        <label for="dur">已持续 <output id="dur-out" for="dur"></output></label>
+        <label for="dur">已经这样持续了 <output id="dur-out" for="dur"></output></label>
         <input id="dur" type="range" min="0" step="10">
       </div>
       <p class="rule" id="rule" aria-live="polite"></p>
@@ -119,15 +119,15 @@
       <p class="verdict" id="verdict"></p>
       <p class="reason" id="reason"></p>
       <ul class="flow">
-        <li data-node="sense">感知</li>
-        <li data-node="gate">闸门</li>
-        <li data-node="llm">LLM</li>
-        <li data-node="haptic">振动</li>
+        <li data-node="sense">采集</li>
+        <li data-node="gate">规则筛选</li>
+        <li data-node="llm">AI 判断</li>
+        <li data-node="haptic">提醒你</li>
       </ul>
     </div>
   </div>
-  <p class="note">闸门只做单信号比较，不支持 AND / OR。多信号的融合交给 LLM，不往闸门条件里堆。</p>
-  <p class="note warn">默认条件集只放已有采样来源的条件。目前接上的是心率与佩戴状态；血氧和电量还没有对应的系统接口接入，没写进来。</p>
+  <p class="note">这些规则一次只看一个信号，不做「心率高 AND 步数为零」这种组合——多个信号一起判断是 AI 该做的事，硬写进规则既难维护又容易误报。</p>
+  <p class="note warn">目前接上的信号只有心率和佩戴状态。血氧和电量还没有对应的系统接口，所以没有写进规则里。</p>
 </section>
 
 <section class="section" id="capabilities">

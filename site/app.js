@@ -12,6 +12,7 @@
     heart_rate: { min: 30, max: 180, unit: "bpm", label: "心率" },
     on_body: { min: 0, max: 1, unit: "", label: "佩戴状态", names: ["未佩戴", "已佩戴"] }
   };
+  var SIGNAL_NAMES = { heart_rate: "心率", on_body: "佩戴状态" };
   var OPS = {
     gt: { sym: ">", test: function (v, t) { return v > t; } },
     lt: { sym: "<", test: function (v, t) { return v < t; } },
@@ -38,11 +39,11 @@
     return Math.floor(s / 60) + " 分 " + (s % 60) + " 秒";
   }
 
-  /* ---------- 闸门演示 ---------- */
+  /* ---------- 筛选规则演示 ---------- */
   function initDemo(data) {
     var conds = (data.conditions || []).filter(function (c) { return RANGES[c.dataType] && OPS[c.operator]; });
     var sel = $("cond"), val = $("val"), dur = $("dur");
-    if (!conds.length) { $("verdict").textContent = "闸门条件加载失败"; return; }
+    if (!conds.length) { $("verdict").textContent = "规则加载失败"; return; }
 
     conds.forEach(function (c, i) {
       var o = document.createElement("option");
@@ -64,8 +65,8 @@
       dur.value = 0;
       dur.disabled = c.sustainedSeconds === 0;
       $("rule").textContent =
-        c.dataType + " " + OPS[c.operator].sym + " " + (r.names ? r.names[c.threshold] : c.threshold) +
-        "，持续 " + fmtTime(c.sustainedSeconds) + "，触发后静默 " + fmtTime(c.cooldownSeconds);
+        SIGNAL_NAMES[c.dataType] + " " + OPS[c.operator].sym + " " + (r.names ? r.names[c.threshold] : c.threshold) +
+        "，持续 " + fmtTime(c.sustainedSeconds) + "，提醒后 " + fmtTime(c.cooldownSeconds) + "内不再打扰";
       update();
     }
 
@@ -81,16 +82,16 @@
 
       if (!hit) {
         state = "idle";
-        verdict = "未命中，闸门关闭";
-        reason = "这个读数不满足条件，样本在本地被丢弃，没有调用 LLM，也没有额外耗电。";
+        verdict = "正常，不用管";
+        reason = "这个读数不满足条件，直接在手表上丢掉，不调用 AI，也不额外耗电。";
       } else if (!held) {
         state = "wait";
-        verdict = "命中，还没持续够";
-        reason = "条件已满足，但要持续 " + fmtTime(c.sustainedSeconds) + " 才放行，目前 " + fmtTime(d) + "。短暂波动不会打扰你。";
+        verdict = "有点异常，再等等";
+        reason = "已经超过阈值，但要连续保持 " + fmtTime(c.sustainedSeconds) + " 才值得提醒，目前 " + fmtTime(d) + "。短暂的波动不会打扰你。";
       } else {
         state = "fire";
-        verdict = "放行，唤醒 LLM";
-        reason = "条件持续成立，事件越过闸门交给 LLM 判断，再以振动提醒。随后进入 " + fmtTime(c.cooldownSeconds) + " 静默期，不会反复提醒。";
+        verdict = "值得提醒你";
+        reason = "读数持续异常，交给 AI 结合佩戴状态和活动量判断，再决定怎么提醒你。之后 " + fmtTime(c.cooldownSeconds) + "内不会再重复提醒。";
       }
 
       var box = $("result");
@@ -106,7 +107,7 @@
       var face = document.querySelector(".face");
       if (c.dataType === "heart_rate") {
         $("bpm").textContent = v;
-        $("face-state").textContent = held ? "闸门放行" : hit ? "命中 · 持续观察" : "闸门未触发";
+        $("face-state").textContent = held ? "值得提醒" : hit ? "再观察一下" : "无需打扰";
       }
       face.dataset.alert = held ? "true" : "false";
     }
@@ -174,7 +175,7 @@
   }
 
   load(SOURCES.gates).then(initDemo, function () {
-    $("verdict").textContent = "闸门条件加载失败";
+    $("verdict").textContent = "规则加载失败";
     $("reason").textContent = "请直接查看仓库里的 common/models/gate-conditions.json。";
   });
   load(SOURCES.caps).then(function (d) { initCaps(d); initReveal(); }, function () { failCaps(); initReveal(); });
