@@ -81,21 +81,6 @@
       "status": "implemented"
     },
     {
-      "id": "health_heart_rate",
-      "name": "Heart Rate Monitoring",
-      "description": "本地心率感知与闸门事件检测（持续偏高 / 异常偏低）；原始数据上行不在本期",
-      "tags": [
-        "health",
-        "sensor",
-        "heart"
-      ],
-      "input_modes": [],
-      "output_modes": [
-        "event"
-      ],
-      "status": "implemented"
-    },
-    {
       "id": "notification_display",
       "name": "Notification Display",
       "description": "接收并展示通知消息（闸门事件的默认输出通道之一）",

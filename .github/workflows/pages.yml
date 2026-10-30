@@ -1,0 +1,55 @@
+name: 部署落地页到 GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "common/models/gate-conditions.json"
+      - "common/capabilities/watch-capabilities.json"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只部署一次，新的触发取代排队中的旧触发
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 组装站点（落地页 + 仓库契约数据）
+        run: |
+          mkdir -p _site/data
+          cp -r site/. _site/
+          cp common/models/gate-conditions.json _site/data/
+          cp common/capabilities/watch-capabilities.json _site/data/
+          touch _site/.nojekyll
+
+      - name: 校验数据文件是合法 JSON
+        run: |
+          python3 -c "import json,glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('_site/data/*.json')]"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
