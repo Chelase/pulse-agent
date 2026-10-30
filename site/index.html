@@ -127,7 +127,7 @@
     </div>
   </div>
   <p class="note">闸门只做单信号比较，不支持 AND / OR。多信号的融合交给 LLM，不往闸门条件里堆。</p>
-  <p class="note warn">当前只有心率和佩戴状态两个数据源已接入闸门。血氧和电量的条件已写进契约，但代码里还没有对应的采样，真机上不会触发。</p>
+  <p class="note warn">默认条件集只放已有采样来源的条件。目前接上的是心率与佩戴状态；血氧和电量还没有对应的系统接口接入，没写进来。</p>
 </section>
 
 <section class="section" id="capabilities">
@@ -137,11 +137,6 @@
     <p>能力清单取自 <code>watch-capabilities.json</code>，外部生态按它发现并接入。规划中的能力，接入方不应依赖。</p>
   </header>
   <div class="caps" id="caps"></div>
-  <p class="note warn">「已实现」指代码已落地，不代表真机上已验证。后台窗口时长、定时任务、BLE 入站等依赖真机的环节还没验完。BLE 入站默认关闭，也没有并入默认启动流程。</p>
-  <div class="boundary">
-    <h3>健康解读的边界</h3>
-    <p>只出描述性提示，例如「持续 20 分钟心率偏高且无活动」。不给医疗建议，也不做疾病判断。</p>
-  </div>
 </section>
 
 <section class="section" id="start">

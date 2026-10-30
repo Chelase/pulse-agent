@@ -187,8 +187,9 @@ Step 3  Skill 调用机制
 
 ## 九、仍未接通的数据源
 
-闸门条件集里的 `low_blood_oxygen` 与 `battery_critical` 目前没有采样来源：
-`health-bridge` 只订阅心率（`spo2` 字段无写入），也没有电量桥接。两条条件不会触发。
+血氧与电量当前没有采样来源：`health-bridge` 只订阅心率（`spo2` 字段无写入），也没有电量桥接。
+两条对应条件（`low_blood_oxygen`、`battery_critical`）已从默认条件集删除——留在集里只会让接入方
+误以为该能力可用。schema 的 `dataType` 枚举仍保留这两项，接入桥接后可直接补回。
 
 ## 十、部署/调试配置入口（2026-09-15）
 

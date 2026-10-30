@@ -1,10 +1,9 @@
 ---
 name: health-alert-handling
-description: 处理健康类闸门事件（心率、血氧异常）时的处置步骤，只给描述性提示，绝不给医疗建议
+description: 处理健康类闸门事件（心率异常）时的处置步骤，只给描述性提示，绝不给医疗建议
 triggers:
   - sustained_high_heart_rate
   - low_heart_rate
-  - low_blood_oxygen
 tools_allowed:
   - get_heart_rate
   - get_step_count
@@ -17,7 +16,7 @@ tools_allowed:
 
 ## 何时适用
 
-闸门放行了 `sustained_high_heart_rate`、`low_heart_rate`、`low_blood_oxygen` 之一时。
+闸门放行了 `sustained_high_heart_rate`、`low_heart_rate` 之一时。
 
 ## 步骤
 

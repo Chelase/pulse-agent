@@ -40,15 +40,6 @@ export const DEFAULT_CONDITIONS = [
     cooldownSeconds: 3600
   },
   {
-    id: 'low_blood_oxygen',
-    description: '血氧偏低',
-    dataType: 'blood_oxygen',
-    operator: 'lt',
-    threshold: 90,
-    sustainedSeconds: 120,
-    cooldownSeconds: 3600
-  },
-  {
     id: 'taken_off',
     description: '手表被取下',
     dataType: 'on_body',
@@ -56,15 +47,6 @@ export const DEFAULT_CONDITIONS = [
     threshold: 0,
     sustainedSeconds: 300,
     cooldownSeconds: 1800
-  },
-  {
-    id: 'battery_critical',
-    description: '电量极低',
-    dataType: 'battery_level',
-    operator: 'lt',
-    threshold: 10,
-    sustainedSeconds: 0,
-    cooldownSeconds: 3600
   }
 ]
 

@@ -5,6 +5,10 @@ dist/
 *.log
 .DS_Store
 
+# IDE 本地状态
+.idea/
+.vscode/
+
 # Agent 工作区数据（本地记忆/缓存），不纳入版本管理
 .workbuddy-ai/
 

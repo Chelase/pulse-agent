@@ -87,6 +87,6 @@ for 每条 condition:
 - **排查「事件不触发」**：依次看日志 `[HealthBridge] heartRate:` / `[SensorBridge] onBodyState:`（采样是否到达）、`[Runtime] gate passed:`（闸门是否放行）、`[AgentLoop] step<N> tool=`（LLM 是否被调用）。三段都无输出说明采样没到；有采样无 `gate passed` 说明条件未满足或仍在冷却期。
 - **排查「重复触发」**：检查对应条件的 `cooldownSeconds` 是否为 0 或过小；再看 `_eventBusy` 丢弃日志是否在刷。
 - **验证**：真机制造持续高心率（或注入测试事件），确认 `gate passed → LLM → 通知/振动` 完整链路，且冷却期内不重复。
-- **未接通的数据源**：`blood_oxygen`（health-bridge 只订阅心率，`spo2` 字段无写入）与 `battery_level`（无电量桥接）当前没有采样来源，对应条件不会触发。
+- **未接通的数据源**：血氧（`health-bridge` 只订阅心率，`spo2` 字段无写入）与电量（无电量桥接）当前没有采样来源。两条对应条件已从默认条件集删除，不写进集里是为了避免接入方误以为该能力可用；`gate-conditions.schema.json` 的 `dataType` 枚举仍保留这两项，接入桥接后可直接使用。
 
 > 更新时间：2026-09-14

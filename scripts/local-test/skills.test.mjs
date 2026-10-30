@@ -37,7 +37,7 @@ name: demo-skill
 description: 演示用技能
 triggers:
   - taken_off
-  - battery_critical
+  - sustained_high_heart_rate
 tools_allowed: [vibrate, notification_send]
 ---
 
@@ -49,7 +49,7 @@ tools_allowed: [vibrate, notification_send]
   const { meta, body } = parseFrontmatter(SAMPLE)
   check('解析 name', meta.name, 'demo-skill')
   check('解析 description', meta.description, '演示用技能')
-  check('解析块状列表 triggers', meta.triggers, ['taken_off', 'battery_critical'])
+  check('解析块状列表 triggers', meta.triggers, ['taken_off', 'sustained_high_heart_rate'])
   check('解析行内列表 tools_allowed', meta.tools_allowed, ['vibrate', 'notification_send'])
   check('解析正文首行', body.split('\n')[0], '# 正文标题')
 }
@@ -72,7 +72,7 @@ tools_allowed: [vibrate, notification_send]
 
   check('加载 skill 数量', reg.list().length, 1)
   check('skill id', reg.list()[0].id, 'health-alert-handling')
-  check('triggers 解析正确', reg.list()[0].triggers, ['sustained_high_heart_rate', 'low_heart_rate', 'low_blood_oxygen'])
+  check('triggers 解析正确', reg.list()[0].triggers, ['sustained_high_heart_rate', 'low_heart_rate'])
   check('首次启动已落盘', memory.files.has(SKILL_PATH), true)
   check('落盘内容含 frontmatter', String(memory.files.get(SKILL_PATH)).startsWith('---'), true)
 

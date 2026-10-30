@@ -26,7 +26,7 @@ await runtime.start()
 check('runtime ready', runtime.ready, true)
 check('rootId 形如 blueos_watch:<id>', /^blueos_watch:.+/.test(runtime.identity.getRootId()), true)
 check('skillRegistry 已加载 1 个 skill', runtime.skillRegistry.list().length, 1)
-check('gateEvaluator 使用内置条件集', runtime.gateEvaluator.getConditions().length, 5)
+check('gateEvaluator 使用内置条件集', runtime.gateEvaluator.getConditions().length, 3)
 
 // 真机上 sustainedSeconds=600，测试里换成单次即触发，其余语义不变
 // 条件 id 沿用内置集的名字，这样能顺带验证 skill 按 trigger 命中

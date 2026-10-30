@@ -133,7 +133,7 @@ scripts/
 
 BlueOS 的后台运行受 `manifest.json` 的 `background.features` 约束。**这个 Agent 只能是「被事件唤醒的处理器」，不能是「一直跑着的循环」。**
 
-> ⚠️ 当前 `blueos/src/agent-core/agent-loop.js` 的注释写着 Sense → Think → Act → Observe，但 Sense 那一环没接上：`sensor-bridge.js` 和 `health-bridge.js` 的回调只更新内存 state，没有任何路径通向 `agentLoop`，也没有闸门求值器。也就是说现在的 Agent 永远不会被传感器唤醒。这是与本节架构的已知偏差，见 `dev-plans/mvp-core-capabilities-plan.md` Step 2。
+> ⚠️ 事件驱动链路已接通（见 `dev-plans/mvp-core-capabilities-plan.md` Step 2，已实现待真机验证）：`sensor-bridge.js` 与 `health-bridge.js` 的回调经 `GateEvaluator` 求值，跨门事件才通向 `agentLoop.handleEvent`。当前接入的数据源只有心率与佩戴状态；血氧与电量尚无采样来源，未写进默认条件集。常驻心跳受 `background.features` 与平台定时任务语义约束，见 `mechanisms/resident-heartbeat-chain.md`。
 
 ### 投射层：外部数据的通用展示面
 

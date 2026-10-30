@@ -7,15 +7,11 @@
     caps: ["data/watch-capabilities.json", "../common/capabilities/watch-capabilities.json"]
   };
 
-  // 闸门演示用的读数范围与单位（契约只有阈值，没有量程）
+  // 契约里有条件，但代码还没有对应采样来源（见 event-gate-chain.md「未接通的数据源」）
   var RANGES = {
     heart_rate: { min: 30, max: 180, unit: "bpm", label: "心率" },
-    blood_oxygen: { min: 80, max: 100, unit: "%", label: "血氧" },
-    on_body: { min: 0, max: 1, unit: "", label: "佩戴状态", names: ["未佩戴", "已佩戴"] },
-    battery_level: { min: 0, max: 100, unit: "%", label: "电量" }
+    on_body: { min: 0, max: 1, unit: "", label: "佩戴状态", names: ["未佩戴", "已佩戴"] }
   };
-  // 契约里有条件，但代码还没有对应采样来源（见 event-gate-chain.md「未接通的数据源」）
-  var NOT_WIRED = { blood_oxygen: true, battery_level: true };
   var OPS = {
     gt: { sym: ">", test: function (v, t) { return v > t; } },
     lt: { sym: "<", test: function (v, t) { return v < t; } },
@@ -51,7 +47,7 @@
     conds.forEach(function (c, i) {
       var o = document.createElement("option");
       o.value = i;
-      o.textContent = c.description + (NOT_WIRED[c.dataType] ? "（暂未接入采样）" : "");
+      o.textContent = c.description;
       sel.appendChild(o);
     });
 
@@ -69,8 +65,7 @@
       dur.disabled = c.sustainedSeconds === 0;
       $("rule").textContent =
         c.dataType + " " + OPS[c.operator].sym + " " + (r.names ? r.names[c.threshold] : c.threshold) +
-        "，持续 " + fmtTime(c.sustainedSeconds) + "，触发后静默 " + fmtTime(c.cooldownSeconds) +
-        (NOT_WIRED[c.dataType] ? "。注意：这条条件在契约里，但代码还没有对应的采样，真机上不会触发，此处仅演示规则。" : "");
+        "，持续 " + fmtTime(c.sustainedSeconds) + "，触发后静默 " + fmtTime(c.cooldownSeconds);
       update();
     }
 

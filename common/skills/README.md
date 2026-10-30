@@ -90,7 +90,7 @@ internal://files/agent/skills/<name>/SKILL.md
 
 | skill | 触发 | 作用 |
 |-------|------|------|
-| `health-alert-handling` | `sustained_high_heart_rate` / `low_heart_rate` / `low_blood_oxygen` | 健康异常事件的处置步骤与表达边界 |
+| `health-alert-handling` | `sustained_high_heart_rate` / `low_heart_rate` | 心率异常事件的处置步骤与表达边界 |
 
 ## 引入社区 skill 前先看 License
 

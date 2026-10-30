@@ -30,7 +30,7 @@ resetAll()
 
 // ============ 闸门求值器 ============
 {
-  check('闸门 内置条件数 5', DEFAULT_CONDITIONS.length, 5)
+  check('闸门 内置条件数 3', DEFAULT_CONDITIONS.length, 3)
 
   let clock = 0
   const gate = new GateEvaluator(DEFAULT_CONDITIONS, () => clock)
@@ -67,9 +67,11 @@ resetAll()
   check('闸门 无关数据类型返回 null', other.evaluate('wrist_lift', 1), null)
   check('闸门 undefined 值返回 null', other.evaluate('heart_rate', undefined), null)
 
-  clock = 0
-  const batt = new GateEvaluator(DEFAULT_CONDITIONS, () => clock)
-  check('闸门 单次采样即触发（sustainedSeconds=0）', (batt.evaluate('battery_level', 5) || {}).id, 'battery_critical')
+  // 契约里没有采样来源的数据类型（血氧 / 电量）不应再出现在默认条件集中
+  check('闸门 默认条件不含血氧', other.getConditions().some(c => c.dataType === 'blood_oxygen'), false)
+  check('闸门 默认条件不含电量', other.getConditions().some(c => c.dataType === 'battery_level'), false)
+  check('闸门 血氧采样不触发任何条件', other.evaluate('blood_oxygen', 80), null)
+  check('闸门 电量采样不触发任何条件', other.evaluate('battery_level', 5), null)
 }
 
 // ============ 事件路径 ============

@@ -55,4 +55,4 @@ if (hr > 100 && duration > 600) { askLLM() }
 
 BlueOS 侧读取 `gate-conditions.json` 并在本地求值，不把原始采样流送进 `agent-loop`。跨过闸门的事件才调用 Agent。
 
-> ⚠️ 当前 `blueos/src/agent-core/` 尚未实现闸门求值器，传感器回调只更新内存 state。见 `.agent-rules/dev-plans/blueos-agent-mvp-plan.md` Phase 2。
+默认条件集只包含**已有采样来源**的条件：心率偏高、心率偏低、手表被取下。`blood_oxygen` 与 `battery_level` 虽在 schema 的枚举里，但当前没有对应的桥接实现，不写进默认条件集——没有采样来源的条件留在集里只会让接入方误以为该能力可用。
